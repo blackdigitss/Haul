@@ -1,0 +1,9 @@
+{
+  "hosting": {
+    "site": "haulapp",
+    "source": ".",
+    "frameworksBackend": {
+      "region": "us-central1"
+    }
+  }
+}
