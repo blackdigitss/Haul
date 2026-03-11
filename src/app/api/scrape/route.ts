@@ -30,6 +30,12 @@ function parsePrice(text: string): number | null {
     return parseFloat(val.replace(",", ""));
   }
 
+  // Shorthand: 170Y, 500y (common in rep communities for yuan)
+  const shorthandMatch = text.match(/(\d+(?:[.,]\d+)?)\s*[Yy](?:\s|[【\[（(]|$)/);
+  if (shorthandMatch) {
+    return parseFloat(shorthandMatch[1].replace(",", ""));
+  }
+
   // Bare numbers near currency context (fallback)
   const bareMatch = text.match(/(?:price|cost|usd|\$)\s*:?\s*(\d+(?:\.\d+)?)/i);
   if (bareMatch) {
@@ -65,6 +71,32 @@ function extractWeidianUrl(html: string): string | undefined {
   return match ? match[0] : undefined;
 }
 
+// Yupoo internal API types
+interface YupooPhoto {
+  id: number;
+  path: string;
+  name: string;
+  attribute: { width: number; height: number; type: string };
+}
+
+interface YupooAlbumResponse {
+  code?: number;
+  message: string;
+  data?: {
+    list: YupooPhoto[];
+    albumInfo: {
+      name: string;
+      description: string;
+      cover: string;
+    };
+  };
+}
+
+function extractAlbumId(url: string): string | null {
+  const match = url.match(/\/albums\/(\d+)/);
+  return match ? match[1] : null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json();
@@ -97,98 +129,129 @@ export async function POST(request: NextRequest) {
       ? `https://${sellerMatch[1]}.x.yupoo.com/albums`
       : `${parsedUrl.origin}/albums`;
 
-    // Fetch the page
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Referer: sellerUrl,
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      signal: AbortSignal.timeout(15000),
-    });
+    const albumId = extractAlbumId(url);
+    let images: string[] = [];
+    let title = "";
+    let subtitle = "";
+    let price: number | null = null;
+    let contact: SellerContact = {};
+    let weidianUrl: string | undefined;
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: `Failed to fetch page (${response.status})` },
-        { status: 502 }
-      );
+    // Try Yupoo internal API first (images are loaded via JS, not in HTML)
+    if (albumId && sellerMatch) {
+      try {
+        const apiUrl = `${sellerUrl}/api/web/albums/${albumId}/show?uid=1&password=`;
+        const apiRes = await fetch(apiUrl, {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            Referer: url,
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (apiRes.ok) {
+          const apiData: YupooAlbumResponse = await apiRes.json();
+          if (apiData.data) {
+            const { list, albumInfo } = apiData.data;
+            title = albumInfo.name || "";
+            subtitle = albumInfo.description || "";
+            price = parsePrice(title) || parsePrice(subtitle);
+            contact = extractContact(subtitle);
+
+            // Build image URLs from paths
+            images = list
+              .filter((p) => p.path)
+              .map((p) => `https://photo.yupoo.com${p.path}`)
+              .slice(0, 30);
+          }
+        }
+      } catch {
+        // API failed, fall back to HTML scraping
+      }
     }
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    // Fallback: scrape HTML if API didn't return images
+    if (images.length === 0) {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Referer: sellerUrl,
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        signal: AbortSignal.timeout(15000),
+      });
 
-    // Extract title
-    const title =
-      $(".showalbumheader__gallerytitle").text().trim() ||
-      $(".album__title").text().trim() ||
-      $(".album3__title").text().trim() ||
-      $("title").text().trim() ||
-      "";
-
-    // Extract subtitle
-    const subtitle =
-      $(".showalbumheader__gallerysubtitle").text().trim() ||
-      "";
-
-    // Parse price from title + subtitle
-    const price = parsePrice(title) || parsePrice(subtitle);
-
-    // Extract images
-    const images: string[] = [];
-    const seenImages = new Set<string>();
-
-    // Try various Yupoo image selectors
-    $("img").each((_, el) => {
-      const src =
-        $(el).attr("data-origin-src") ||
-        $(el).attr("data-src") ||
-        $(el).attr("src") ||
-        "";
-
-      if (!src) return;
-
-      // Normalize URL
-      let imgUrl = src;
-      if (imgUrl.startsWith("//")) imgUrl = "https:" + imgUrl;
-
-      // Filter for actual product images
-      if (
-        imgUrl.includes("photo.yupoo.com") ||
-        imgUrl.includes("yupoo.com/photo") ||
-        imgUrl.includes("img.alicdn") ||
-        (imgUrl.includes("yupoo") && /\.(jpg|jpeg|png|webp)/i.test(imgUrl))
-      ) {
-        // Upgrade to larger size
-        imgUrl = imgUrl.replace(/\/small\//, "/big/");
-        imgUrl = imgUrl.replace(/_\d+x\d+\./, ".");
-
-        if (!seenImages.has(imgUrl)) {
-          seenImages.add(imgUrl);
-          images.push(imgUrl);
-        }
+      if (!response.ok) {
+        return NextResponse.json(
+          { error: `Failed to fetch page (${response.status})` },
+          { status: 502 }
+        );
       }
-    });
 
-    // Also check for images in links (sometimes in <a> tags)
-    $("a[href*='photo.yupoo.com'], a[href*='yupoo.com/photo']").each(
-      (_, el) => {
-        const href = $(el).attr("href") || "";
-        if (href && !seenImages.has(href)) {
-          seenImages.add(href);
-          images.push(href);
-        }
+      const html = await response.text();
+      const $ = cheerio.load(html);
+
+      if (!title) {
+        title =
+          $(".showalbumheader__gallerytitle").text().trim() ||
+          $(".album__title").text().trim() ||
+          $(".album3__title").text().trim() ||
+          $("title").text().trim() ||
+          "";
       }
-    );
 
-    // Extract contact info from subtitle + page text
-    const pageText = subtitle + " " + $("body").text().substring(0, 5000);
-    const contact = extractContact(pageText);
+      if (!subtitle) {
+        subtitle =
+          $(".showalbumheader__gallerysubtitle").text().trim() || "";
+      }
 
-    // Extract Weidian URL
-    const weidianUrl = extractWeidianUrl(html);
+      if (!price) {
+        price = parsePrice(title) || parsePrice(subtitle);
+      }
+
+      // Extract images from HTML
+      const seenImages = new Set<string>();
+      $("img").each((_, el) => {
+        const src =
+          $(el).attr("data-origin-src") ||
+          $(el).attr("data-src") ||
+          $(el).attr("src") ||
+          "";
+        if (!src) return;
+        let imgUrl = src;
+        if (imgUrl.startsWith("//")) imgUrl = "https:" + imgUrl;
+        if (
+          imgUrl.includes("photo.yupoo.com") ||
+          imgUrl.includes("yupoo.com/photo") ||
+          imgUrl.includes("img.alicdn") ||
+          (imgUrl.includes("yupoo") && /\.(jpg|jpeg|png|webp)/i.test(imgUrl))
+        ) {
+          imgUrl = imgUrl.replace(/\/small\//, "/big/");
+          imgUrl = imgUrl.replace(/_\d+x\d+\./, ".");
+          if (!seenImages.has(imgUrl)) {
+            seenImages.add(imgUrl);
+            images.push(imgUrl);
+          }
+        }
+      });
+
+      // Extract contact and weidian from HTML
+      const pageText = subtitle + " " + $("body").text().substring(0, 5000);
+      contact = extractContact(pageText);
+      weidianUrl = extractWeidianUrl(html);
+    }
+
+    // Check for weidian URL in subtitle if not found
+    if (!weidianUrl && subtitle) {
+      const wMatch = subtitle.match(
+        /https?:\/\/(?:www\.)?weidian\.com\/item\.html\?[^\s"'<>]+/
+      );
+      if (wMatch) weidianUrl = wMatch[0];
+    }
 
     const result: ScrapeResult = {
       title,

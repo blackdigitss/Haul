@@ -4,6 +4,8 @@ import { type ReactNode } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { Sidebar } from "./sidebar";
 import { LoginPage } from "./login-page";
+import { ClipboardPrompt } from "./clipboard-prompt";
+import { CommandPalette } from "@/components/ui/command-palette";
 import { PageLoader } from "@/components/ui/loading";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -20,6 +22,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+      <ClipboardPrompt />
+      <CommandPalette />
     </div>
   );
 }

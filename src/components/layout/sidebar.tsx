@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,11 +15,14 @@ import {
   LogOut,
   Menu,
   X,
+  Search,
+  ClipboardPaste,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/theme-context";
 import { useAuth } from "@/contexts/auth-context";
-import { useState } from "react";
+import { useData } from "@/contexts/data-context";
+import { useState, useCallback, useEffect, useMemo } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -30,28 +33,81 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { signOut, user } = useAuth();
+  const { products, hauls } = useData();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().includes("MAC"));
+  }, []);
+
+  const activeHaulCount = useMemo(
+    () => hauls.filter((h) => h.status !== "received").length,
+    [hauls]
+  );
+
+  const openCommandPalette = useCallback(() => {
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "k", metaKey: true })
+    );
+  }, []);
+
+  const pasteAndNavigate = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const trimmed = text.trim();
+      if (
+        /yupoo\.com/i.test(trimmed) ||
+        /weidian\.com/i.test(trimmed)
+      ) {
+        router.push(`/products/new?url=${encodeURIComponent(trimmed)}`);
+        setMobileOpen(false);
+      }
+    } catch {
+      // Clipboard access denied or empty — silently ignore
+    }
+  }, [router]);
+
+  const getBadge = (label: string): number | null => {
+    if (label === "Products") return products.length || null;
+    if (label === "Hauls") return activeHaulCount || null;
+    return null;
+  };
 
   const navContent = (
     <>
-      {/* Logo */}
-      <div className="px-4 pt-6 pb-8">
+      {/* Logo + Command Palette shortcut */}
+      <div className="px-4 pt-6 pb-8 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-lg bg-[var(--accent)] flex items-center justify-center">
             <span className="text-[var(--bg-primary)] font-bold text-sm">H</span>
           </div>
           <span className="text-lg font-bold tracking-tight">Haul</span>
         </Link>
+        <button
+          onClick={openCommandPalette}
+          className={cn(
+            "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium",
+            "border border-[var(--border)] bg-[var(--bg-secondary)]",
+            "text-[var(--text-muted)] hover:text-[var(--text-secondary)]",
+            "transition-colors duration-150"
+          )}
+          title={`Search (${isMac ? "⌘" : "Ctrl+"}K)`}
+        >
+          <Search size={12} />
+          <span>{isMac ? "⌘K" : "Ctrl+K"}</span>
+        </button>
       </div>
 
-      {/* Add New */}
-      <div className="px-3 mb-6">
+      {/* Add New + Clipboard paste */}
+      <div className="px-3 mb-6 flex items-center gap-2">
         <Link
           href="/products/new"
           className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium",
+            "flex-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium",
             "bg-[var(--accent)] text-[var(--bg-primary)]",
             "hover:opacity-90 transition-all duration-150 active:scale-[0.98]"
           )}
@@ -60,6 +116,18 @@ export function Sidebar() {
           <Plus size={16} />
           Add Product
         </Link>
+        <button
+          onClick={pasteAndNavigate}
+          className={cn(
+            "flex items-center justify-center rounded-lg p-2.5",
+            "border border-[var(--border)] bg-[var(--bg-secondary)]",
+            "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]",
+            "transition-all duration-150 active:scale-[0.96]"
+          )}
+          title="Paste product URL from clipboard"
+        >
+          <ClipboardPaste size={16} />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -69,6 +137,7 @@ export function Sidebar() {
             item.href === "/"
               ? pathname === "/"
               : pathname.startsWith(item.href);
+          const badge = getBadge(item.label);
           return (
             <Link
               key={item.href}
@@ -91,6 +160,19 @@ export function Sidebar() {
               )}
               <item.icon size={18} />
               {item.label}
+              {badge !== null && (
+                <span
+                  className={cn(
+                    "ml-auto inline-flex items-center justify-center rounded-full px-1.5 py-0.5",
+                    "text-[10px] font-semibold leading-none min-w-[18px]",
+                    isActive
+                      ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                      : "bg-[var(--bg-tertiary)] text-[var(--text-muted)]"
+                  )}
+                >
+                  {badge}
+                </span>
+              )}
             </Link>
           );
         })}

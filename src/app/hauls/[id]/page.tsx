@@ -22,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { ProductCard } from "@/components/products/product-card";
 import { Modal } from "@/components/ui/modal";
 import { PageLoader } from "@/components/ui/loading";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useData } from "@/contexts/data-context";
 import { formatUSD, formatCNY } from "@/lib/utils";
 import { HAUL_STATUS_CONFIG, type HaulStatus } from "@/types";
@@ -34,6 +36,8 @@ export default function HaulDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const { hauls, products, updateHaul, deleteHaul, updateProduct } = useData();
+  const toast = useToast();
+  const confirmDialog = useConfirm();
 
   const haul = useMemo(() => hauls.find((h) => h.id === id), [hauls, id]);
   const haulProducts = useMemo(
@@ -74,28 +78,37 @@ export default function HaulDetailPage({
     setSaving(true);
     try {
       await updateHaul(haul.id, {
-        name,
-        notes,
+        name: name.trim(),
+        notes: notes.trim(),
         status,
-        shipping_agent: shippingAgent || undefined,
-        tracking_number: trackingNumber || undefined,
+        shipping_agent: shippingAgent.trim() || undefined,
+        tracking_number: trackingNumber.trim() || undefined,
       });
       setEditing(false);
+      toast.success("Haul updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save haul");
     } finally {
       setSaving(false);
     }
-  }, [haul, name, notes, status, shippingAgent, trackingNumber, updateHaul]);
+  }, [haul, name, notes, status, shippingAgent, trackingNumber, updateHaul, toast]);
 
   const handleDelete = useCallback(async () => {
-    if (!haul || !window.confirm("Delete this haul? Products won't be deleted."))
-      return;
-    // Reset product statuses
+    if (!haul) return;
+    const ok = await confirmDialog({
+      title: "Delete Haul",
+      message: "Products in this haul will be moved back to 'Saved' status.",
+      confirmLabel: "Delete Haul",
+      variant: "danger",
+    });
+    if (!ok) return;
     for (const p of haulProducts) {
       await updateProduct(p.id, { status: "saved", haul_id: undefined });
     }
     await deleteHaul(haul.id);
+    toast.success("Haul deleted");
     router.push("/hauls");
-  }, [haul, haulProducts, deleteHaul, updateProduct, router]);
+  }, [haul, haulProducts, deleteHaul, updateProduct, router, confirmDialog, toast]);
 
   const addProductToHaul = useCallback(
     async (productId: string) => {
@@ -113,8 +126,9 @@ export default function HaulDetailPage({
         total_usd: newTotalUsd,
       });
       await updateProduct(productId, { status: "in-haul", haul_id: haul.id });
+      toast.success("Product added to haul");
     },
-    [haul, products, updateHaul, updateProduct]
+    [haul, products, updateHaul, updateProduct, toast]
   );
 
   const removeProductFromHaul = useCallback(
@@ -133,11 +147,23 @@ export default function HaulDetailPage({
         total_usd: newTotalUsd,
       });
       await updateProduct(productId, { status: "saved", haul_id: undefined });
+      toast.info("Product removed from haul");
     },
-    [haul, products, updateHaul, updateProduct]
+    [haul, products, updateHaul, updateProduct, toast]
   );
 
-  if (!haul) return <AppShell><PageLoader /></AppShell>;
+  if (!haul) return (
+    <AppShell>
+      <div className="text-center py-20">
+        <Package size={48} className="text-[var(--text-muted)] mx-auto mb-4" />
+        <h2 className="text-lg font-semibold mb-2">Haul not found</h2>
+        <p className="text-sm text-[var(--text-muted)] mb-4">This haul may have been deleted.</p>
+        <Link href="/hauls" className="text-sm text-[var(--accent)] hover:underline">
+          Back to Hauls
+        </Link>
+      </div>
+    </AppShell>
+  );
 
   const statusConfig = HAUL_STATUS_CONFIG[haul.status];
 

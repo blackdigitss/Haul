@@ -78,6 +78,7 @@ const DataContext = createContext<DataContextType | null>(null);
 const FUSE_OPTIONS = {
   keys: [
     { name: "name", weight: 3 },
+    { name: "brand", weight: 2.5 },
     { name: "seller_name", weight: 2 },
     { name: "category", weight: 1.5 },
     { name: "style", weight: 1 },

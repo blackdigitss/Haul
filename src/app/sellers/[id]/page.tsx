@@ -19,6 +19,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { StarRating } from "@/components/ui/star-rating";
 import { ProductCard } from "@/components/products/product-card";
 import { PageLoader } from "@/components/ui/loading";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useData } from "@/contexts/data-context";
 import { averageRating } from "@/lib/utils";
 import type { SellerRatings, Seller } from "@/types";
@@ -50,6 +52,8 @@ export default function SellerDetailPage({
     [products, id]
   );
 
+  const toast = useToast();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Seller>>({});
   const [saving, setSaving] = useState(false);
@@ -72,19 +76,38 @@ export default function SellerDetailPage({
     if (!seller) return;
     setSaving(true);
     try {
-      await updateSeller(seller.id, form);
+      // Clean form data: ensure empty strings instead of undefined for optional fields
+      const cleanedForm = {
+        ...form,
+        weidian_url: form.weidian_url || "",
+        notes: form.notes || "",
+        contact: {
+          whatsapp: form.contact?.whatsapp || "",
+          wechat: form.contact?.wechat || "",
+        },
+      };
+      await updateSeller(seller.id, cleanedForm);
       setEditing(false);
+      toast.success("Seller updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save seller");
     } finally {
       setSaving(false);
     }
-  }, [seller, form, updateSeller]);
+  }, [seller, form, updateSeller, toast]);
 
   const handleDelete = useCallback(async () => {
-    if (!seller || !window.confirm("Delete this seller? Products won't be deleted."))
-      return;
+    if (!seller) return;
+    const ok = await confirm({
+      title: "Delete Seller",
+      message: "Delete this seller? Products won't be deleted.",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
     await deleteSeller(seller.id);
     router.push("/sellers");
-  }, [seller, deleteSeller, router]);
+  }, [seller, deleteSeller, router, confirm]);
 
   if (!seller) return <AppShell><PageLoader /></AppShell>;
 

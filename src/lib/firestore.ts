@@ -22,8 +22,21 @@ import type {
 import {
   DEFAULT_CATEGORIES,
   DEFAULT_STYLES,
+  DEFAULT_BRANDS,
 } from "@/types";
 import { generateId } from "./utils";
+
+// Strip undefined values from an object before sending to Firestore
+// (Firestore rejects `undefined` values)
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const result = {} as Record<string, unknown>;
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+  return result as T;
+}
 
 // ============================================================
 // Collection Paths
@@ -60,7 +73,7 @@ export async function createProduct(
   const id = generateId();
   const now = Date.now();
   const product: Product = { ...data, id, created_at: now, updated_at: now };
-  await setDoc(doc(productsCol(userId), id), product);
+  await setDoc(doc(productsCol(userId), id), stripUndefined(product as unknown as Record<string, unknown>) as unknown as Product);
   return product;
 }
 
@@ -69,10 +82,10 @@ export async function updateProduct(
   id: string,
   data: Partial<Product>
 ): Promise<void> {
-  await updateDoc(doc(productsCol(userId), id), {
+  await updateDoc(doc(productsCol(userId), id), stripUndefined({
     ...data,
     updated_at: Date.now(),
-  });
+  } as Record<string, unknown>));
 }
 
 export async function deleteProduct(
@@ -138,10 +151,10 @@ export async function updateSeller(
   id: string,
   data: Partial<Seller>
 ): Promise<void> {
-  await updateDoc(doc(sellersCol(userId), id), {
+  await updateDoc(doc(sellersCol(userId), id), stripUndefined({
     ...data,
     updated_at: Date.now(),
-  });
+  } as Record<string, unknown>));
 }
 
 export async function deleteSeller(
@@ -225,6 +238,7 @@ export async function getSettings(
   const defaults: UserSettings = {
     categories: [...DEFAULT_CATEGORIES],
     styles: [...DEFAULT_STYLES],
+    brands: [...DEFAULT_BRANDS],
     preferred_currency: "USD",
     theme: "dark",
   };

@@ -1,27 +1,26 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Link as LinkIcon,
   Loader2,
   Plus,
-  Image as ImageIcon,
   X,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { StarRating } from "@/components/ui/star-rating";
+import { useToast } from "@/components/ui/toast";
 import { useData } from "@/contexts/data-context";
-import { cn, isYupooUrl, extractYupooSeller, buildAlbumsUrl } from "@/lib/utils";
+import { cn, isYupooUrl, extractYupooSeller, buildAlbumsUrl, proxyImg } from "@/lib/utils";
 import {
   TIER_CONFIG,
   type Tier,
@@ -29,11 +28,23 @@ import {
 } from "@/types";
 
 export default function AddProductPage() {
+  return (
+    <Suspense>
+      <AddProductContent />
+    </Suspense>
+  );
+}
+
+function AddProductContent() {
   const router = useRouter();
-  const { createProduct, createSeller, getSellerByUrl, settings } = useData();
+  const searchParams = useSearchParams();
+  const { createProduct, createSeller, getSellerByUrl, settings, updateSettings } = useData();
+  const toast = useToast();
+  const autoScraped = useRef(false);
 
   const categories = settings?.categories || [];
   const styles = settings?.styles || [];
+  const brands = settings?.brands || [];
 
   // URL mode state
   const [url, setUrl] = useState("");
@@ -54,8 +65,10 @@ export default function AddProductPage() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [weidianUrl, setWeidianUrl] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [brand, setBrand] = useState("");
   const [sellerName, setSellerName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const handleScrape = useCallback(async () => {
     if (!url.trim()) return;
@@ -82,7 +95,7 @@ export default function AddProductPage() {
         setPriceUsd(Math.round(data.price_cny * 0.14 * 100) / 100); // Approximate, will be updated
       }
       setImages(data.images.slice(0, 20));
-      setSourceUrl(data.seller_url ? url.trim() : url.trim());
+      setSourceUrl(url.trim());
       setSellerName(data.seller_name || "");
       if (data.weidian_url) setWeidianUrl(data.weidian_url);
 
@@ -109,11 +122,27 @@ export default function AddProductPage() {
     }
   }, [url]);
 
+  // Auto-scrape if URL query param is present (from clipboard prompt)
+  useEffect(() => {
+    const urlParam = searchParams.get("url");
+    if (urlParam && !autoScraped.current) {
+      autoScraped.current = true;
+      setUrl(urlParam);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (url && autoScraped.current && !scraping && !name) {
+      handleScrape();
+    }
+  }, [url, scraping, name, handleScrape]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!name.trim()) return;
       setSaving(true);
+      setSaveError("");
 
       try {
         // Find or create seller
@@ -149,12 +178,19 @@ export default function AddProductPage() {
           }
         }
 
+        // Auto-save new brand to settings
+        const trimmedBrand = brand.trim();
+        if (trimmedBrand && !brands.includes(trimmedBrand)) {
+          await updateSettings({ brands: [...brands, trimmedBrand] });
+        }
+
         await createProduct({
           name: name.trim(),
+          brand: trimmedBrand || "",
           price_cny: priceCny,
           price_usd: priceUsd,
           source_url: sourceUrl,
-          weidian_url: weidianUrl || undefined,
+          weidian_url: weidianUrl.trim() || "",
           images: [],
           original_images: images,
           category,
@@ -172,15 +208,20 @@ export default function AddProductPage() {
           status: "saved",
         });
 
+        toast.success("Product saved!");
         router.push("/products");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to save product";
+        setSaveError(msg);
+        toast.error(msg);
       } finally {
         setSaving(false);
       }
     },
     [
-      name, priceCny, priceUsd, sourceUrl, weidianUrl, images, category,
+      name, brand, brands, priceCny, priceUsd, sourceUrl, weidianUrl, images, category,
       style, sellerName, rating, notes, tags, tier,
-      createProduct, createSeller, getSellerByUrl, router,
+      createProduct, createSeller, getSellerByUrl, updateSettings, router, toast,
     ]
   );
 
@@ -290,12 +331,12 @@ export default function AddProductPage() {
                   key={i}
                   className="relative group w-20 h-20 rounded-lg overflow-hidden border border-[var(--border)] flex-shrink-0"
                 >
-                  <Image
-                    src={img}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={proxyImg(img)}
                     alt={`Image ${i + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="80px"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
                   />
                   <button
                     onClick={() =>
@@ -323,6 +364,25 @@ export default function AddProductPage() {
               placeholder="e.g. Miu Miu Wool Coat"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
+              Brand
+            </label>
+            <Input
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              placeholder="e.g. Nike, Louis Vuitton..."
+              list="brand-list"
+            />
+            {brands.length > 0 && (
+              <datalist id="brand-list">
+                {brands.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -455,6 +515,10 @@ export default function AddProductPage() {
               placeholder="designer, winter, grail..."
             />
           </div>
+
+          {saveError && (
+            <p className="text-xs text-red-400">{saveError}</p>
+          )}
 
           <div className="flex gap-2 pt-2">
             <Button type="submit" disabled={saving || !name.trim()}>

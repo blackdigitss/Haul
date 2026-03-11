@@ -8,21 +8,25 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
 import { useData } from "@/contexts/data-context";
 
 export default function NewHaulPage() {
   const router = useRouter();
   const { createHaul } = useData();
+  const toast = useToast();
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [shippingAgent, setShippingAgent] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (!name.trim()) return;
       setSaving(true);
+      setSaveError("");
       try {
         const haul = await createHaul({
           name: name.trim(),
@@ -30,10 +34,15 @@ export default function NewHaulPage() {
           total_cny: 0,
           total_usd: 0,
           product_ids: [],
-          notes,
-          shipping_agent: shippingAgent || undefined,
+          notes: notes.trim(),
+          shipping_agent: shippingAgent.trim() || undefined,
         });
+        toast.success("Haul created!");
         router.push(`/hauls/${haul.id}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to create haul";
+        setSaveError(msg);
+        toast.error(msg);
       } finally {
         setSaving(false);
       }
@@ -87,6 +96,10 @@ export default function NewHaulPage() {
             placeholder="Any notes about this haul..."
           />
         </div>
+
+        {saveError && (
+          <p className="text-xs text-red-400">{saveError}</p>
+        )}
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" disabled={saving || !name.trim()}>

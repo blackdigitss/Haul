@@ -96,6 +96,12 @@ export function parseYupooPrice(title: string): number | null {
     return parseFloat(val.replace(",", ""));
   }
 
+  // Shorthand: 170Y, 500y (common in rep communities for yuan)
+  const shorthandMatch = title.match(/(\d+(?:[.,]\d+)?)\s*[Yy](?:\s|[【\[（(]|$)/);
+  if (shorthandMatch) {
+    return parseFloat(shorthandMatch[1].replace(",", ""));
+  }
+
   return null;
 }
 
@@ -111,6 +117,16 @@ export function isYupooUrl(url: string): boolean {
  */
 export function isWeidianUrl(url: string): boolean {
   return /weidian\.com\/item\.html/.test(url);
+}
+
+/**
+ * Proxy a yupoo image URL through our API to avoid hotlink blocking.
+ */
+export function proxyImg(url: string): string {
+  if (url.includes("photo.yupoo.com")) {
+    return `/api/img?url=${encodeURIComponent(url)}`;
+  }
+  return url;
 }
 
 /**

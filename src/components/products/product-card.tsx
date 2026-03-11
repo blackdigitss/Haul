@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -13,7 +12,7 @@ import {
   Edit3,
   Package,
 } from "lucide-react";
-import { cn, formatUSD, truncate } from "@/lib/utils";
+import { cn, formatUSD, truncate, proxyImg } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/ui/star-rating";
 import { TIER_CONFIG, STATUS_CONFIG } from "@/types";
@@ -50,8 +49,9 @@ export function ProductCard({
     []
   );
 
-  const primaryImage =
-    product.images[0] || product.original_images[0] || "";
+  const rawImage =
+    product.images[0] || product.original_images?.[0] || "";
+  const primaryImage = rawImage ? proxyImg(rawImage) : "";
 
   return (
     <motion.div
@@ -181,16 +181,16 @@ export function ProductCard({
       <Link href={`/products/${product.id}`}>
         <div className="relative aspect-square bg-[var(--bg-secondary)] overflow-hidden">
           {primaryImage && !imgError ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={primaryImage}
               alt={product.name}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className={cn(
-                "object-cover transition-all duration-500",
+                "absolute inset-0 w-full h-full object-cover transition-all duration-500",
                 "group-hover:scale-105",
                 imgLoaded ? "opacity-100" : "opacity-0"
               )}
+              loading="lazy"
               onLoad={() => setImgLoaded(true)}
               onError={() => setImgError(true)}
             />
@@ -221,6 +221,11 @@ export function ProductCard({
             {truncate(product.name, 50)}
           </h3>
         </Link>
+        {product.brand && (
+          <p className="text-[11px] text-[var(--text-muted)] truncate">
+            {product.brand}
+          </p>
+        )}
 
         <div className="flex items-center justify-between">
           <span className="text-base font-bold tracking-tight">

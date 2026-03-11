@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback, use } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Package,
+  Star,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,11 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/ui/star-rating";
 import { PageLoader } from "@/components/ui/loading";
+import { Lightbox } from "@/components/ui/lightbox";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useData } from "@/contexts/data-context";
-import { cn, formatUSD, formatCNY } from "@/lib/utils";
+import { cn, formatUSD, formatCNY, proxyImg } from "@/lib/utils";
 import {
   TIER_CONFIG,
   STATUS_CONFIG,
@@ -39,26 +42,44 @@ export default function ProductDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const { products, sellers, settings, updateProduct, deleteProduct } = useData();
+  const { products, sellers, settings, updateProduct, deleteProduct, updateSettings } = useData();
   const product = useMemo(
     () => products.find((p) => p.id === id),
     [products, id]
   );
 
+  const toast = useToast();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Partial<Product>>({});
   const [activeImage, setActiveImage] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const seller = useMemo(
     () => product && sellers.find((s) => s.id === product.seller_id),
     [product, sellers]
   );
 
+  const brands = settings?.brands || [];
+
+  const handleSetMainImage = useCallback(async (index: number) => {
+    if (!product) return;
+    const imgs = product.images.length > 0 ? [...product.images] : [...(product.original_images || [])];
+    if (index <= 0 || index >= imgs.length) return;
+    const [selected] = imgs.splice(index, 1);
+    imgs.unshift(selected);
+    const updateField = product.images.length > 0 ? "images" : "original_images";
+    await updateProduct(product.id, { [updateField]: imgs });
+    setActiveImage(0);
+    toast.success("Main image updated");
+  }, [product, updateProduct, toast]);
+
   const startEdit = useCallback(() => {
     if (!product) return;
     setForm({
       name: product.name,
+      brand: product.brand || "",
       price_cny: product.price_cny,
       price_usd: product.price_usd,
       category: product.category,
@@ -76,22 +97,49 @@ export default function ProductDetailPage({
     if (!product) return;
     setSaving(true);
     try {
-      await updateProduct(product.id, form);
+      // Auto-save new brand to settings
+      const trimmedBrand = (form.brand || "").trim();
+      if (trimmedBrand && !brands.includes(trimmedBrand)) {
+        await updateSettings({ brands: [...brands, trimmedBrand] });
+      }
+      await updateProduct(product.id, { ...form, brand: trimmedBrand || "" });
       setEditing(false);
+      toast.success("Product updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save product");
     } finally {
       setSaving(false);
     }
-  }, [product, form, updateProduct]);
+  }, [product, form, brands, updateProduct, updateSettings, toast]);
 
   const handleDelete = useCallback(async () => {
-    if (!product || !window.confirm("Delete this product?")) return;
+    if (!product) return;
+    const ok = await confirm({
+      title: "Delete Product",
+      message: "This product will be permanently deleted.",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
     await deleteProduct(product.id);
     router.push("/products");
-  }, [product, deleteProduct, router]);
+  }, [product, deleteProduct, router, confirm]);
 
-  if (!product) return <AppShell><PageLoader /></AppShell>;
+  if (!product) return (
+    <AppShell>
+      <div className="text-center py-20">
+        <Package size={48} className="text-[var(--text-muted)] mx-auto mb-4" />
+        <h2 className="text-lg font-semibold mb-2">Product not found</h2>
+        <p className="text-sm text-[var(--text-muted)] mb-4">This product may have been deleted.</p>
+        <Link href="/products" className="text-sm text-[var(--accent)] hover:underline">
+          Back to Products
+        </Link>
+      </div>
+    </AppShell>
+  );
 
-  const images = product.images.length > 0 ? product.images : product.original_images;
+  const rawImages = product.images.length > 0 ? product.images : (product.original_images || []);
+  const images = rawImages.map(proxyImg);
   const categories = settings?.categories || [];
   const styles = settings?.styles || [];
 
@@ -107,8 +155,8 @@ export default function ProductDetailPage({
 
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Image Gallery */}
-        <div>
-          <div className="relative aspect-square rounded-xl overflow-hidden bg-[var(--bg-secondary)] border border-[var(--border)]">
+        <div className="max-w-md mx-auto lg:max-w-none">
+          <div className="relative aspect-[4/3] lg:aspect-square max-h-[60vh] rounded-xl overflow-hidden bg-[var(--bg-secondary)] border border-[var(--border)]">
             {images.length > 0 ? (
               <AnimatePresence mode="wait">
                 <motion.div
@@ -119,13 +167,12 @@ export default function ProductDetailPage({
                   transition={{ duration: 0.2 }}
                   className="relative w-full h-full"
                 >
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={images[activeImage]}
                     alt={product.name}
-                    fill
-                    className="object-contain"
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    priority
+                    className="absolute inset-0 w-full h-full object-contain cursor-pointer"
+                    onClick={() => setLightboxOpen(true)}
                   />
                 </motion.div>
               </AnimatePresence>
@@ -176,24 +223,34 @@ export default function ProductDetailPage({
           {images.length > 1 && (
             <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
               {images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImage(i)}
-                  className={cn(
-                    "relative w-16 h-16 rounded-lg overflow-hidden border-2 flex-shrink-0 transition-all",
-                    i === activeImage
-                      ? "border-[var(--accent)] opacity-100"
-                      : "border-transparent opacity-60 hover:opacity-100"
+                <div key={i} className="relative group flex-shrink-0">
+                  <button
+                    onClick={() => setActiveImage(i)}
+                    className={cn(
+                      "relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
+                      i === activeImage
+                        ? "border-[var(--accent)] opacity-100"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    )}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img}
+                      alt={`${product.name} ${i + 1}`}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </button>
+                  {i > 0 && (
+                    <button
+                      onClick={() => handleSetMainImage(i)}
+                      className="absolute -top-1 -right-1 p-1 rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      title="Set as main image"
+                    >
+                      <Star size={10} />
+                    </button>
                   )}
-                >
-                  <Image
-                    src={img}
-                    alt={`${product.name} ${i + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="64px"
-                  />
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -211,6 +268,25 @@ export default function ProductDetailPage({
                   value={form.name || ""}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
+                  Brand
+                </label>
+                <Input
+                  value={form.brand || ""}
+                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                  placeholder="e.g. Nike, Louis Vuitton..."
+                  list="brand-list-edit"
+                />
+                {brands.length > 0 && (
+                  <datalist id="brand-list-edit">
+                    {brands.map((b) => (
+                      <option key={b} value={b} />
+                    ))}
+                  </datalist>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -371,6 +447,11 @@ export default function ProductDetailPage({
                 <h1 className="text-2xl font-bold tracking-tight mb-1">
                   {product.name}
                 </h1>
+                {product.brand && (
+                  <p className="text-sm font-medium text-[var(--text-secondary)] mb-0.5">
+                    {product.brand}
+                  </p>
+                )}
                 {seller && (
                   <Link
                     href={`/sellers/${seller.id}`}
@@ -458,6 +539,19 @@ export default function ProductDetailPage({
           )}
         </div>
       </div>
+
+      {/* Keyboard shortcut hint */}
+      <p className="text-xs text-[var(--text-muted)] text-center mt-8">
+        Press Ctrl+K to search
+      </p>
+
+      {/* Image lightbox */}
+      <Lightbox
+        images={images}
+        initialIndex={activeImage}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </AppShell>
   );
 }

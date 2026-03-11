@@ -49,6 +49,7 @@ export interface Seller {
 export interface Product {
   id: string;
   name: string;
+  brand?: string;
   price_cny: number;
   price_usd: number;
   source_url: string;
@@ -91,6 +92,7 @@ export interface Haul {
 export interface UserSettings {
   categories: string[];
   styles: string[];
+  brands: string[];
   preferred_currency: string;
   theme: "light" | "dark" | "system";
 }
@@ -150,6 +152,8 @@ export const DEFAULT_CATEGORIES = [
   "Home",
   "Other",
 ] as const;
+
+export const DEFAULT_BRANDS: string[] = [];
 
 export const DEFAULT_STYLES = [
   "Luxury",

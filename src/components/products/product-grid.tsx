@@ -22,6 +22,8 @@ import { Package } from "lucide-react";
 import { ProductCard } from "./product-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useData } from "@/contexts/data-context";
 import { midpoint } from "@/lib/utils";
 import type { Product, Tier } from "@/types";
@@ -76,6 +78,8 @@ export function ProductGrid() {
     batchUpdateProducts,
     filters,
   } = useData();
+  const toast = useToast();
+  const confirmDialog = useConfirm();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -86,26 +90,34 @@ export function ProductGrid() {
 
   const handleDelete = useCallback(
     async (id: string) => {
-      if (window.confirm("Delete this product?")) {
+      const ok = await confirmDialog({
+        title: "Delete Product",
+        message: "This product will be permanently deleted.",
+        confirmLabel: "Delete",
+        variant: "danger",
+      });
+      if (ok) {
         await deleteProduct(id);
+        toast.success("Product deleted");
       }
     },
-    [deleteProduct]
+    [deleteProduct, confirmDialog, toast]
   );
 
   const handleTierChange = useCallback(
     async (id: string, tier: Tier) => {
       await updateProduct(id, { tier });
+      toast.success("Priority updated");
     },
-    [updateProduct]
+    [updateProduct, toast]
   );
 
   const handleAddToHaul = useCallback(
     (id: string) => {
-      // Will be handled by modal in a future iteration
       updateProduct(id, { status: "in-haul" });
+      toast.info("Added to haul");
     },
-    [updateProduct]
+    [updateProduct, toast]
   );
 
   const handleDragEnd = useCallback(
