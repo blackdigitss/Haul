@@ -1,0 +1,16 @@
+project_id = "xtdmwbbxuuudtsbhpqzp"
+
+[functions.img-proxy]
+verify_jwt = false
+
+[functions.scrape]
+verify_jwt = false
+
+[functions.ingest-images]
+verify_jwt = false
+
+[functions.reddit]
+verify_jwt = false
+
+[functions.ai]
+verify_jwt = false

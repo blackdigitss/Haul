@@ -1,0 +1,222 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* HAUL — "archive editorial" design language.
+   Ink & bone, persimmon accent, gold reserved for grails. Dark-first. */
+
+@layer base {
+  :root {
+    --background: 36 30% 97%;
+    --foreground: 20 14% 8%;
+
+    --card: 36 25% 99%;
+    --card-foreground: 20 14% 8%;
+
+    --popover: 36 25% 99%;
+    --popover-foreground: 20 14% 8%;
+
+    --primary: 15 78% 50%;
+    --primary-foreground: 36 30% 97%;
+
+    --secondary: 32 18% 92%;
+    --secondary-foreground: 20 14% 12%;
+
+    --muted: 32 16% 92%;
+    --muted-foreground: 24 8% 42%;
+
+    --accent: 32 18% 90%;
+    --accent-foreground: 20 14% 10%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 36 30% 97%;
+
+    --border: 30 14% 87%;
+    --input: 30 14% 87%;
+    --ring: 15 78% 50%;
+
+    --radius: 0.75rem;
+
+    /* brand */
+    --persimmon: 15 78% 50%;
+    --bone: 36 30% 97%;
+    --ink: 20 14% 6%;
+    --grail: 40 68% 48%;
+    --grail-glow: 40 80% 55%;
+
+    /* item tiers */
+    --tier-grail: 40 68% 48%;
+    --tier-cop: 15 78% 50%;
+    --tier-want: 28 85% 52%;
+    --tier-maybe: 210 18% 52%;
+    --tier-pass: 24 6% 58%;
+
+    /* lifecycle status */
+    --status-saved: 24 8% 52%;
+    --status-planned: 262 55% 58%;
+    --status-purchased: 217 75% 55%;
+    --status-warehouse: 38 85% 50%;
+    --status-shipped: 190 80% 42%;
+    --status-delivered: 145 55% 40%;
+
+    /* seller vetting */
+    --vet-trusted: 145 55% 40%;
+    --vet-community: 190 80% 40%;
+    --vet-caution: 0 72% 48%;
+    --vet-unvetted: 24 6% 55%;
+
+    --chart-1: 15 78% 50%;
+    --chart-2: 40 68% 48%;
+    --chart-3: 190 80% 42%;
+    --chart-4: 262 55% 58%;
+    --chart-5: 145 55% 40%;
+  }
+
+  .dark {
+    --background: 20 14% 5%;
+    --foreground: 36 20% 92%;
+
+    --card: 22 12% 8%;
+    --card-foreground: 36 20% 92%;
+
+    --popover: 22 12% 8%;
+    --popover-foreground: 36 20% 92%;
+
+    --primary: 15 85% 58%;
+    --primary-foreground: 20 14% 6%;
+
+    --secondary: 22 10% 13%;
+    --secondary-foreground: 36 20% 88%;
+
+    --muted: 22 10% 12%;
+    --muted-foreground: 30 10% 60%;
+
+    --accent: 22 10% 14%;
+    --accent-foreground: 36 20% 92%;
+
+    --destructive: 0 68% 52%;
+    --destructive-foreground: 36 20% 95%;
+
+    --border: 25 10% 15%;
+    --input: 25 10% 16%;
+    --ring: 15 85% 58%;
+
+    --persimmon: 15 85% 58%;
+    --bone: 36 20% 92%;
+    --ink: 20 14% 5%;
+    --grail: 42 72% 56%;
+    --grail-glow: 42 85% 62%;
+
+    --tier-grail: 42 72% 56%;
+    --tier-cop: 15 85% 58%;
+    --tier-want: 28 88% 58%;
+    --tier-maybe: 210 20% 60%;
+    --tier-pass: 24 6% 45%;
+
+    --status-saved: 30 8% 55%;
+    --status-planned: 262 60% 66%;
+    --status-purchased: 217 80% 64%;
+    --status-warehouse: 38 90% 58%;
+    --status-shipped: 190 85% 52%;
+    --status-delivered: 145 60% 50%;
+
+    --vet-trusted: 145 60% 48%;
+    --vet-community: 190 85% 50%;
+    --vet-caution: 0 68% 56%;
+    --vet-unvetted: 24 6% 50%;
+
+    --chart-1: 15 85% 58%;
+    --chart-2: 42 72% 56%;
+    --chart-3: 190 85% 52%;
+    --chart-4: 262 60% 66%;
+    --chart-5: 145 60% 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    touch-action: manipulation;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  /* editorial uppercase labels */
+  .tracking-editorial {
+    letter-spacing: 0.2em;
+  }
+  .tracking-ultra {
+    letter-spacing: 0.35em;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .glass {
+    @apply bg-background/80 backdrop-blur-xl;
+  }
+
+  /* grail shimmer — reserved for the highest tier */
+  .grail-shimmer {
+    background-image: linear-gradient(
+      100deg,
+      hsl(var(--grail)) 20%,
+      hsl(var(--grail-glow) / 0.9) 40%,
+      hsl(48 90% 78%) 50%,
+      hsl(var(--grail-glow) / 0.9) 60%,
+      hsl(var(--grail)) 80%
+    );
+    background-size: 200% auto;
+    animation: grail-shimmer 3s linear infinite;
+  }
+  .grail-glow {
+    box-shadow:
+      0 0 14px hsl(var(--grail-glow) / 0.35),
+      0 0 4px hsl(var(--grail-glow) / 0.2);
+  }
+  .grail-card {
+    background: linear-gradient(135deg, hsl(var(--grail) / 0.1) 0%, transparent 55%);
+    border-color: hsl(var(--grail) / 0.35);
+  }
+
+  .img-loading {
+    background: linear-gradient(
+      110deg,
+      hsl(var(--muted)) 8%,
+      hsl(var(--accent)) 18%,
+      hsl(var(--muted)) 33%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+}
+
+@keyframes grail-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes shimmer {
+  to { background-position-x: -200%; }
+}

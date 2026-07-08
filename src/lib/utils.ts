@@ -1,131 +1,80 @@
-import { type ClassValue, clsx } from "clsx";
+import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+/** Hosts whose images are hotlink-protected and must go through the img-proxy. */
+const PROXIED_HOSTS = ["yupoo.com", "weidian.com", "wdcdn.net", "alicdn.com"];
+
+/**
+ * Rewrites hotlink-protected image URLs through the img-proxy edge function
+ * (spoofs the Referer server-side) so they render in the app.
+ */
+export function proxyImg(url: string | undefined | null): string {
+  if (!url) return "";
+  if (PROXIED_HOSTS.some((h) => url.includes(h))) {
+    return `${SUPABASE_URL}/functions/v1/img-proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
+/**
+ * Best available image for an item:
+ * permanent thumbnail → permanent original → proxied source fallback.
+ */
+export function itemThumb(p: {
+  thumbUrls?: string[];
+  imageUrls?: string[];
+  images?: string[];
+  mainImageIndex?: number;
+}): string {
+  const i = p.mainImageIndex ?? 0;
+  const thumb = p.thumbUrls?.[i] || p.thumbUrls?.[0];
+  if (thumb) return thumb;
+  const full = p.imageUrls?.[i] || p.imageUrls?.[0];
+  if (full) return full;
+  const fallback = p.images?.[i] || p.images?.[0];
+  return proxyImg(fallback);
+}
+
+export function itemFull(
+  p: { imageUrls?: string[]; images?: string[]; mainImageIndex?: number },
+  index?: number
+): string {
+  const i = index ?? p.mainImageIndex ?? 0;
+  return p.imageUrls?.[i] || proxyImg(p.images?.[i]);
+}
+
 export function formatUSD(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  return `$${amount.toFixed(2)}`;
 }
 
 export function formatCNY(amount: number): string {
   return `¥${amount.toLocaleString()}`;
 }
 
-export function timeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  const intervals = [
-    { label: "y", seconds: 31536000 },
-    { label: "mo", seconds: 2592000 },
-    { label: "w", seconds: 604800 },
-    { label: "d", seconds: 86400 },
-    { label: "h", seconds: 3600 },
-    { label: "m", seconds: 60 },
-  ];
-
-  for (const interval of intervals) {
-    const count = Math.floor(seconds / interval.seconds);
-    if (count >= 1) return `${count}${interval.label} ago`;
-  }
-  return "just now";
+export function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
 }
 
-export function generateId(): string {
-  return (
-    Date.now().toString(36) +
-    Math.random().toString(36).substring(2, 10)
-  );
-}
-
-/**
- * Fractional indexing for drag-and-drop reorder.
- * Returns a sort_order value between `before` and `after`.
- */
-export function midpoint(before: number, after: number): number {
-  return (before + after) / 2;
-}
-
-/**
- * Extract seller subdomain from a Yupoo URL.
- * e.g., "https://premium888.x.yupoo.com/albums/123" → "premium888"
- */
-export function extractYupooSeller(url: string): string | null {
-  const match = url.match(/https?:\/\/([^.]+)\.x\.yupoo\.com/);
-  return match ? match[1] : null;
-}
-
-/**
- * Build the albums URL from a Yupoo seller subdomain.
- */
-export function buildAlbumsUrl(seller: string): string {
-  return `https://${seller}.x.yupoo.com/albums`;
-}
-
-/**
- * Parse price from a Yupoo title string.
- * Handles: ¥500, ￥500, CNY 500, 500 yuan, (¥100 + ¥50), etc.
- */
-export function parseYupooPrice(title: string): number | null {
-  // Try math expression first: (¥100 + ¥50)
-  const mathMatch = title.match(
-    /\(\s*[¥￥]\s*(\d+(?:[.,]\d+)?)\s*\+\s*[¥￥]\s*(\d+(?:[.,]\d+)?)\s*\)/
-  );
-  if (mathMatch) {
-    return parseFloat(mathMatch[1].replace(",", "")) +
-      parseFloat(mathMatch[2].replace(",", ""));
-  }
-
-  // Standard patterns: ¥500, ￥500
-  const symbolMatch = title.match(/[¥￥]\s*(\d+(?:[.,]\d+)?)/);
-  if (symbolMatch) {
-    return parseFloat(symbolMatch[1].replace(",", ""));
-  }
-
-  // Text patterns: CNY 500, 500 yuan, 500 rmb
-  const textMatch = title.match(
-    /(?:CNY|RMB)\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:yuan|rmb|cny)/i
-  );
-  if (textMatch) {
-    const val = textMatch[1] || textMatch[2];
-    return parseFloat(val.replace(",", ""));
-  }
-
-  return null;
-}
-
-/**
- * Validate that a URL is a Yupoo product/album page.
- */
-export function isYupooUrl(url: string): boolean {
-  return /^https?:\/\/[^.]+\.x\.yupoo\.com\/albums\/\d+/.test(url);
-}
-
-/**
- * Validate that a URL is a Weidian product page.
- */
-export function isWeidianUrl(url: string): boolean {
-  return /weidian\.com\/item\.html/.test(url);
-}
-
-/**
- * Truncate text to a maximum length with ellipsis.
- */
-export function truncate(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength).trimEnd() + "…";
-}
-
-/**
- * Calculate the average of seller ratings.
- */
-export function averageRating(ratings: object): number {
-  const values = (Object.values(ratings) as number[]).filter((v) => typeof v === "number" && v > 0);
-  if (values.length === 0) return 0;
-  return values.reduce((sum, v) => sum + v, 0) / values.length;
+export function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Late night moves";
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
 }
