@@ -69,6 +69,17 @@ await page.waitForTimeout(1600);
 await page.screenshot({ path: `${OUT}/13-add-item-scrape.png` });
 console.log("ok 13-add-item-scrape");
 
+
+// expanded shipping line comparison
+await page.goto(`${BASE}/hauls`, { waitUntil: "networkidle" });
+await page.waitForTimeout(500);
+await page.locator("a[href^='/hauls/']").first().click();
+await page.waitForTimeout(700);
+await page.getByRole("button", { name: /Compare all shipping lines/i }).click();
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${OUT}/15-shipping-compare.png` });
+console.log("ok 15-shipping-compare");
+
 await browser.close();
 if (errors.length) {
   console.error("\nJS ERRORS:\n" + errors.join("\n"));

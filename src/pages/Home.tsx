@@ -53,14 +53,18 @@ export default function Home() {
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-10">
       <motion.header variants={itemAnim} className="flex items-end justify-between">
         <div>
-          <p className="mb-1 text-[11px] font-medium uppercase tracking-ultra text-primary">
+          <p className="mb-1.5 font-num text-[10px] font-medium uppercase tracking-ultra text-primary">
             {greeting()}
           </p>
-          <h1 className="font-display text-3xl font-semibold">The Archive</h1>
+          <h1 className="font-display text-[2.75rem] font-extrabold leading-[0.95]">
+            The
+            <br />
+            Archive
+          </h1>
         </div>
         <button
           onClick={() => setAddOpen(true)}
-          className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform active:scale-95"
+          className="btn-hero flex items-center gap-1.5 rounded-full px-5 py-3 text-sm font-bold text-primary-foreground transition-transform active:scale-95"
         >
           <Plus className="h-4 w-4" /> Add
         </button>
@@ -94,7 +98,7 @@ export default function Home() {
       {grails.length > 0 && (
         <motion.section variants={itemAnim}>
           <div className="mb-3 flex items-center justify-between">
-            <SectionLabel>On the radar</SectionLabel>
+            <SectionLabel index="01">On the radar</SectionLabel>
             <Link to="/items" className="flex items-center gap-1 text-xs text-primary">
               All items <ArrowRight className="h-3 w-3" />
             </Link>
@@ -111,7 +115,7 @@ export default function Home() {
 
       {activeHauls.length > 0 && (
         <motion.section variants={itemAnim}>
-          <SectionLabel>Haul pipeline</SectionLabel>
+          <SectionLabel index="02">Haul pipeline</SectionLabel>
           <div className="space-y-2.5">
             {activeHauls.map((h) => {
               const cfg = HAUL_STATUS_CONFIG[h.status];
@@ -120,7 +124,7 @@ export default function Home() {
                 <Link
                   key={h.id}
                   to={`/hauls/${h.id}`}
-                  className="block rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+                  className="card-lux block rounded-2xl border border-border p-4 transition-colors hover:border-primary/40"
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <p className="font-medium">{h.name}</p>
@@ -148,7 +152,7 @@ export default function Home() {
 
       {recent.length > 0 && (
         <motion.section variants={itemAnim}>
-          <SectionLabel>Recent saves</SectionLabel>
+          <SectionLabel index="03">Recent saves</SectionLabel>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {recent.map((item) => (
               <ItemCard key={item.id} item={item} />
@@ -176,11 +180,13 @@ function StatCard({
   return (
     <Link
       to={to}
-      className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+      className="card-lux rounded-2xl border border-border p-4 transition-colors hover:border-primary/40"
     >
-      <Icon className="mb-2 h-4 w-4 text-primary" strokeWidth={1.8} />
-      <p className="font-display text-2xl font-semibold">{value}</p>
-      <p className="text-[10px] uppercase tracking-editorial text-muted-foreground">{label}</p>
+      <Icon className="mb-2.5 h-4 w-4 text-primary" strokeWidth={1.8} />
+      <p className="font-num text-[1.6rem] font-semibold leading-none">{value}</p>
+      <p className="mt-1.5 text-[9px] font-semibold uppercase tracking-editorial text-muted-foreground">
+        {label}
+      </p>
     </Link>
   );
 }

@@ -22,7 +22,7 @@ export function ItemCard({
       whileHover={{ y: -3 }}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        "group overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-lg",
+        "card-lux group overflow-hidden rounded-2xl border border-border transition-all hover:border-primary/35 hover:shadow-2xl hover:shadow-ink/40",
         item.tier === "grail" && "grail-card",
         selected && "ring-2 ring-primary"
       )}
@@ -51,7 +51,7 @@ export function ItemCard({
           {item.title || "Untitled"}
         </p>
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-foreground">
+          <p className="font-num text-sm font-semibold text-foreground">
             {item.priceCNY != null ? formatCNY(item.priceCNY) : "—"}
             {item.priceUSD != null && (
               <span className="ml-1.5 text-xs font-normal text-muted-foreground">

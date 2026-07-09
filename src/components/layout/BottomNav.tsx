@@ -15,42 +15,35 @@ export function BottomNav() {
   const { pathname } = useLocation();
 
   return (
-    <nav className="glass fixed inset-x-0 bottom-0 z-40 border-t border-border safe-bottom">
-      <div className="mx-auto flex max-w-5xl items-stretch justify-around">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-4 safe-bottom">
+      <nav className="glass pointer-events-auto flex items-center gap-1 rounded-2xl border border-border/70 p-1.5 shadow-2xl shadow-ink/60">
         {TABS.map(({ to, label, icon: Icon }) => {
           const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
           return (
             <NavLink
               key={to}
               to={to}
-              className="relative flex flex-1 flex-col items-center gap-1 py-2.5"
+              aria-label={label}
+              className={cn(
+                "relative flex flex-col items-center gap-0.5 rounded-xl px-4 py-2 transition-colors",
+                active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
             >
               {active && (
                 <motion.span
-                  layoutId="nav-indicator"
-                  className="absolute -top-px h-0.5 w-10 rounded-full bg-primary"
-                  transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  layoutId="dock-pill"
+                  className="btn-hero absolute inset-0 rounded-xl"
+                  transition={{ type: "spring", stiffness: 480, damping: 38 }}
                 />
               )}
-              <Icon
-                className={cn(
-                  "h-5 w-5 transition-colors",
-                  active ? "text-primary" : "text-muted-foreground"
-                )}
-                strokeWidth={active ? 2.2 : 1.8}
-              />
-              <span
-                className={cn(
-                  "text-[10px] font-medium tracking-editorial uppercase",
-                  active ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
+              <Icon className="relative h-[18px] w-[18px]" strokeWidth={active ? 2.3 : 1.9} />
+              <span className="relative text-[9px] font-semibold uppercase tracking-editorial">
                 {label}
               </span>
             </NavLink>
           );
         })}
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }

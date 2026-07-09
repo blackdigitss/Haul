@@ -64,7 +64,7 @@ export function FloatingAIButton() {
         whileTap={{ scale: 0.94 }}
         onClick={() => setOpen(true)}
         aria-label="Open Haul AI"
-        className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+        className="fixed bottom-24 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25"
       >
         <Sparkles className="h-5 w-5" />
       </motion.button>

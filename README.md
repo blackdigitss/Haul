@@ -14,12 +14,19 @@ screen (or open `/?demo=1`) — the whole app works with seeded data, no backend
   auto-creates the seller. Or bulk-paste a messy W2C list and let AI parse it.
 - **Images that never die** — hotlink-protected images display through a Referer-spoofing
   proxy and get permanently rehosted to Supabase Storage with WebP thumbnails.
-- **Reddit Radar** — search the rep subs (W2C, QC, guides) from inside the app, save
-  threads, and attach them to items and sellers.
+- **Reddit Radar with shill detection** — search the rep subs (W2C, QC, guides) from inside
+  the app; results are automatically screened for self-promo patterns (author handle
+  resembling a seller, one account flooding results, zero-engagement promo posts) and
+  flagged before you trust a "review". Your sub list is editable in Settings.
+- **Seller trust scores** — every seller gets a deterministic 0–100 trust ring computed
+  from community vetting, your ratings, delivered orders, and saved research, plus
+  "Best for Tops/Shoes/…" chips so you know who to use for what.
 - **AI seller vetting** — one tap gathers Reddit evidence about a seller and Claude writes
-  a trust report with a verdict badge (community vetted / caution / unvetted).
-- **Haul builder** — group items, pick a shipping line, and get live cost math:
-  items + weight-based intl shipping + agent fee, per-item and per-kg, with ETA.
+  a trust report with a verdict badge, explicitly hunting astroturf/sockpuppet patterns.
+- **Haul builder** — group items, pick a shipping line, and get live cost math using
+  tiered agent rate cards (first-500g base + per-100g), a one-tap comparison of every
+  line with cheapest/fastest flags, editable per-item weights, per-item/per-kg, and ETA.
+- **⌘K command palette** — jump to any item, seller, or haul instantly.
 - **Agent links** — every item with a Weidian/Taobao URL gets one-tap purchase links for
   AllChinaBuy, CNFans, Mulebuy, Superbuy, Sugargoo, and Hoobuy.
 - **Haul AI** — a floating concierge that knows your whole archive (streamed answers,

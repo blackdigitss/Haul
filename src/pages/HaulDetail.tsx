@@ -8,8 +8,9 @@ import {
   useItems,
   useSetHaulItems,
   useUpdateHaul,
+  useUpdateItem,
 } from "@/hooks/use-data";
-import { haulCostBreakdown } from "@/lib/shipping";
+import { compareLines, estimateItemWeight, haulCostBreakdown } from "@/lib/shipping";
 import { HAUL_STATUS_CONFIG, SHIPPING_METHODS, type HaulStatus } from "@/types";
 import { cn, formatCNY, formatUSD, itemThumb } from "@/lib/utils";
 import { SectionLabel } from "@/components/layout/PageHeader";
@@ -29,9 +30,11 @@ export default function HaulDetail() {
   const updateHaul = useUpdateHaul();
   const deleteHaul = useDeleteHaul();
   const setHaulItems = useSetHaulItems();
+  const updateItem = useUpdateItem();
 
   const [addOpen, setAddOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showLines, setShowLines] = useState(false);
 
   const members = useMemo(
     () => items.filter((i) => haul?.productIds.includes(i.id)),
@@ -48,6 +51,10 @@ export default function HaulDetail() {
         ? haulCostBreakdown(members, haul.shippingMethod, haul.agentFeeCNY, haul.shippingCostCNY)
         : null,
     [members, haul]
+  );
+  const lineQuotes = useMemo(
+    () => (breakdown ? compareLines(breakdown.weightG) : []),
+    [breakdown]
   );
 
   if (isLoading) return <div className="img-loading h-96 rounded-2xl" />;
@@ -146,7 +153,7 @@ export default function HaulDetail() {
       </div>
 
       {/* cost calculator */}
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="card-lux rounded-2xl border border-border p-5">
         <SectionLabel>Cost breakdown</SectionLabel>
         <div className="mb-4 grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
@@ -191,12 +198,62 @@ export default function HaulDetail() {
               value={formatCNY(breakdown.grandTotalCNY)}
               bold
             />
-            <p className="mt-1 text-right text-xs text-muted-foreground">
+            <p className="font-num mt-1 text-right text-xs text-muted-foreground">
               {formatCNY(breakdown.perItemCNY)}/item · {formatCNY(breakdown.perKgCNY)}/kg
               {breakdown.etaDays && ` · ETA ${breakdown.etaDays[0]}–${breakdown.etaDays[1]} days`}
             </p>
           </div>
         </dl>
+
+        {/* every line, priced for this exact weight */}
+        <button
+          onClick={() => setShowLines((s) => !s)}
+          className="mt-4 w-full rounded-xl border border-border py-2.5 text-xs font-semibold uppercase tracking-editorial text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+        >
+          {showLines ? "Hide" : "Compare"} all shipping lines
+        </button>
+        {showLines && (
+          <div className="mt-3 space-y-1.5 animate-fade-in">
+            {lineQuotes.map((q) => (
+              <button
+                key={q.key}
+                onClick={() => updateHaul.mutate({ id: haul.id, shippingMethod: q.key })}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-left transition-colors",
+                  haul.shippingMethod === q.key
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/40"
+                )}
+              >
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    {q.label}
+                    {q.cheapest && (
+                      <span className="rounded-full bg-status-delivered/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-editorial text-status-delivered">
+                        Cheapest
+                      </span>
+                    )}
+                    {q.fastest && (
+                      <span className="rounded-full bg-status-shipped/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-editorial text-status-shipped">
+                        Fastest
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-num text-[11px] text-muted-foreground">
+                    {q.minDays}–{q.maxDays} days{q.note ? ` · ${q.note}` : ""}
+                  </span>
+                </span>
+                <span className="font-num shrink-0 text-sm font-semibold">
+                  {formatCNY(q.costCNY)}
+                </span>
+              </button>
+            ))}
+            <p className="pt-1 text-[10px] text-muted-foreground">
+              Estimates from typical agent rate cards (first-500g base + per-100g) — your agent's
+              quote at checkout is final.
+            </p>
+          </div>
+        )}
         {haul.status === "shipped" && (
           <div className="mt-4 space-y-1.5 border-t border-border pt-4">
             <p className="text-xs text-muted-foreground">Tracking number</p>
@@ -248,12 +305,28 @@ export default function HaulDetail() {
                   <ItemImage item={item} className="h-14 w-14 shrink-0 rounded-lg" src={itemThumb(item)} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="font-num text-xs text-muted-foreground">
                       {item.priceCNY != null ? formatCNY(item.priceCNY) : "—"}
                       {item.size && ` · ${item.size}`}
                     </p>
                   </div>
                 </Link>
+                <label className="flex shrink-0 items-center gap-1 font-num text-[11px] text-muted-foreground">
+                  <input
+                    type="number"
+                    defaultValue={estimateItemWeight(item)}
+                    onBlur={(e) => {
+                      const w = parseInt(e.target.value, 10);
+                      if (w > 0 && w !== item.weight) {
+                        updateItem.mutate({ id: item.id, weight: w });
+                        toast.success("Weight updated");
+                      }
+                    }}
+                    className="w-16 rounded-lg border border-input bg-background px-2 py-1.5 text-right text-xs outline-none focus:border-primary"
+                    aria-label="Item weight in grams"
+                  />
+                  g
+                </label>
                 <button
                   onClick={() =>
                     setHaulItems.mutate({ haul, removeIds: [item.id], allItems: items })

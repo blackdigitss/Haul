@@ -1,4 +1,5 @@
-// Haul cost math: weight estimation from categories + per-gram shipping rates.
+// Haul cost math: category-based weight estimation + tiered line rates
+// (first-500g base + per-100g increments, the way agent rate cards bill).
 import type { Item } from "@/types";
 import { CATEGORY_WEIGHTS, DEFAULT_ITEM_WEIGHT_G, SHIPPING_METHODS } from "@/types";
 
@@ -11,10 +12,47 @@ export function estimateHaulWeight(items: Pick<Item, "weight" | "category">[]): 
   return items.reduce((sum, i) => sum + estimateItemWeight(i), 0);
 }
 
+/** Tiered estimate: base covers the first 500g, then per-100g increments. */
 export function estimateShippingCNY(weightG: number, methodKey: string): number {
   const method = SHIPPING_METHODS[methodKey];
   if (!method || weightG <= 0) return 0;
-  return Math.round(weightG * method.ratePerGram);
+  const billed = Math.max(weightG, 500);
+  const extraUnits = Math.ceil((billed - 500) / 100);
+  return method.baseCNY + extraUnits * method.perExtra100gCNY;
+}
+
+export interface LineQuote {
+  key: string;
+  label: string;
+  costCNY: number;
+  minDays: number;
+  maxDays: number;
+  note?: string;
+  cheapest: boolean;
+  fastest: boolean;
+}
+
+/** Every line priced for this weight, cheapest & fastest flagged. */
+export function compareLines(weightG: number): LineQuote[] {
+  const quotes = Object.entries(SHIPPING_METHODS).map(([key, m]) => ({
+    key,
+    label: m.label,
+    costCNY: estimateShippingCNY(weightG, key),
+    minDays: m.minDays,
+    maxDays: m.maxDays,
+    note: m.note,
+    cheapest: false,
+    fastest: false,
+  }));
+  if (weightG > 0 && quotes.length > 0) {
+    const minCost = Math.min(...quotes.map((q) => q.costCNY));
+    const minEta = Math.min(...quotes.map((q) => q.maxDays));
+    for (const q of quotes) {
+      q.cheapest = q.costCNY === minCost;
+      q.fastest = q.maxDays === minEta;
+    }
+  }
+  return quotes.sort((a, b) => a.costCNY - b.costCNY);
 }
 
 export interface HaulCostBreakdown {

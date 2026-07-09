@@ -121,7 +121,7 @@ export default function Insights() {
       </div>
 
       {byCategory.length > 0 && (
-        <section className="rounded-2xl border border-border bg-card p-5">
+        <section className="card-lux rounded-2xl border border-border p-5">
           <SectionLabel>Spend by category (¥)</SectionLabel>
           <div className="flex items-center gap-6">
             <div className="h-44 w-44">
@@ -167,7 +167,7 @@ export default function Insights() {
         </section>
       )}
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="card-lux rounded-2xl border border-border p-5">
         <SectionLabel>Tier distribution</SectionLabel>
         <div className="space-y-2.5">
           {tierDist.map(({ tier, count }) => (
@@ -191,7 +191,7 @@ export default function Insights() {
       </section>
 
       {byBrand.length > 0 && (
-        <section className="rounded-2xl border border-border bg-card p-5">
+        <section className="card-lux rounded-2xl border border-border p-5">
           <SectionLabel>Top brands</SectionLabel>
           <div className="flex flex-wrap gap-2">
             {byBrand.map(([brand, count], i) => (
@@ -210,7 +210,7 @@ export default function Insights() {
       )}
 
       {topSellers.length > 0 && (
-        <section className="rounded-2xl border border-border bg-card p-5">
+        <section className="card-lux rounded-2xl border border-border p-5">
           <SectionLabel>Top sellers</SectionLabel>
           <ul className="space-y-2">
             {topSellers.map((s) => (
@@ -230,8 +230,8 @@ export default function Insights() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="font-display text-xl font-semibold">{value}</p>
+    <div className="card-lux rounded-2xl border border-border p-4">
+      <p className="font-num text-xl font-semibold">{value}</p>
       <p className="mt-0.5 text-[10px] uppercase tracking-editorial text-muted-foreground">
         {label}
       </p>

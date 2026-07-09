@@ -287,18 +287,75 @@ export const CATEGORY_WEIGHTS: Record<string, number> = {
 
 export const DEFAULT_ITEM_WEIGHT_G = 400;
 
-/** Shipping method rates per gram (CNY) with ETA ranges. */
-export const SHIPPING_METHODS: Record<
-  string,
-  { label: string; ratePerGram: number; minDays: number; maxDays: number }
-> = {
-  ems: { label: "EMS", ratePerGram: 0.08, minDays: 10, maxDays: 20 },
-  sal: { label: "SAL", ratePerGram: 0.05, minDays: 20, maxDays: 45 },
-  dhl: { label: "DHL", ratePerGram: 0.12, minDays: 5, maxDays: 10 },
-  fedex: { label: "FedEx", ratePerGram: 0.11, minDays: 5, maxDays: 12 },
-  "kr-ems": { label: "KR-EMS", ratePerGram: 0.07, minDays: 12, maxDays: 25 },
-  "gd-ems": { label: "GD-EMS", ratePerGram: 0.065, minDays: 10, maxDays: 20 },
-  "us-tax-free": { label: "US Tax Free", ratePerGram: 0.06, minDays: 15, maxDays: 30 },
+export interface ShippingMethod {
+  label: string;
+  /** CNY for the first 500g (agents bill a base bracket, not linear grams) */
+  baseCNY: number;
+  /** CNY per additional 100g past 500g */
+  perExtra100gCNY: number;
+  minDays: number;
+  maxDays: number;
+  note?: string;
+}
+
+/**
+ * Guesstimate rate cards modeled on how agent lines actually bill:
+ * a first-500g base + per-100g increments. Deliberately estimates, not quotes.
+ */
+export const SHIPPING_METHODS: Record<string, ShippingMethod> = {
+  "us-tax-free": {
+    label: "US Tax-Free Line",
+    baseCNY: 150,
+    perExtra100gCNY: 11,
+    minDays: 15,
+    maxDays: 30,
+    note: "Best value to the US, handles most clothing fine",
+  },
+  "gd-ems": {
+    label: "GD-EMS",
+    baseCNY: 160,
+    perExtra100gCNY: 12,
+    minDays: 10,
+    maxDays: 20,
+  },
+  ems: {
+    label: "EMS",
+    baseCNY: 180,
+    perExtra100gCNY: 14,
+    minDays: 10,
+    maxDays: 20,
+  },
+  sal: {
+    label: "SAL",
+    baseCNY: 100,
+    perExtra100gCNY: 9,
+    minDays: 20,
+    maxDays: 45,
+    note: "Cheapest, slowest",
+  },
+  eub: {
+    label: "EUB / e-Packet",
+    baseCNY: 130,
+    perExtra100gCNY: 10,
+    minDays: 15,
+    maxDays: 35,
+    note: "Small parcels under ~2kg",
+  },
+  fedex: {
+    label: "FedEx IP",
+    baseCNY: 220,
+    perExtra100gCNY: 19,
+    minDays: 5,
+    maxDays: 12,
+  },
+  dhl: {
+    label: "DHL",
+    baseCNY: 230,
+    perExtra100gCNY: 20,
+    minDays: 5,
+    maxDays: 10,
+    note: "Fastest, priciest, strictest",
+  },
 };
 
 /** Sneaker/clothing batch knowledge — quality tier per known batch code. */

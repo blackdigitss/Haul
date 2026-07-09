@@ -33,7 +33,7 @@ export default function Settings() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="card-lux rounded-2xl border border-border p-5">
         <SectionLabel>Account</SectionLabel>
         <div className="flex items-center justify-between">
           <p className="text-sm">{user?.email ?? "—"}</p>
@@ -46,7 +46,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="card-lux rounded-2xl border border-border p-5">
         <SectionLabel>Appearance</SectionLabel>
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-sm">
@@ -57,7 +57,7 @@ export default function Settings() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="card-lux rounded-2xl border border-border p-5">
         <SectionLabel>Buying</SectionLabel>
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">
@@ -140,7 +140,7 @@ function ChipListEditor({
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5">
+    <section className="card-lux rounded-2xl border border-border p-5">
       <SectionLabel>{label}</SectionLabel>
       {hint && <p className="-mt-2 mb-3 text-xs text-muted-foreground">{hint}</p>}
       <div className="mb-3 flex flex-wrap gap-1.5">

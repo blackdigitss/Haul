@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Radar as RadarIcon, Search } from "lucide-react";
+import { Loader2, Radar as RadarIcon, Search, ShieldAlert } from "lucide-react";
+import { analyzeShills } from "@/lib/shill";
 import { PageHeader, SectionLabel } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RedditPostCard } from "@/components/reddit/RedditPostCard";
@@ -24,8 +25,25 @@ export default function Radar() {
   const [results, setResults] = useState<RedditPost[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [attachSeller, setAttachSeller] = useState<string>("");
+  const [hideShills, setHideShills] = useState(false);
 
   const subs = settings?.redditSubs ?? [];
+
+  // shill heuristics: compare authors against every tracked seller name +
+  // whatever the query itself names (searching a seller directly)
+  const shillMap = useMemo(() => {
+    if (!results) return null;
+    const names = [
+      ...sellers.flatMap((s) => [s.name, s.subdomain]),
+      ...query.split(/\s+/).filter((w) => w.length >= 5),
+    ].filter(Boolean);
+    return analyzeShills(results, names);
+  }, [results, sellers, query]);
+
+  const flaggedCount = useMemo(() => {
+    if (!shillMap) return 0;
+    return [...shillMap.values()].filter((c) => c.suspicious).length;
+  }, [shillMap]);
 
   const run = async (q: string) => {
     if (!q.trim()) return;
@@ -140,12 +158,27 @@ export default function Radar() {
 
       {results ? (
         <div className="space-y-2.5">
-          {results.map((post) => {
+          {flaggedCount > 0 && (
+            <button
+              onClick={() => setHideShills((h) => !h)}
+              className="flex w-full items-center justify-between rounded-xl border border-vet-caution/40 bg-vet-caution/10 px-4 py-2.5 text-xs font-medium text-vet-caution"
+            >
+              <span className="flex items-center gap-1.5">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                {flaggedCount} result{flaggedCount === 1 ? "" : "s"} flagged as possible shills
+              </span>
+              <span className="underline">{hideShills ? "Show them" : "Hide them"}</span>
+            </button>
+          )}
+          {results
+            .filter((post) => !hideShills || !shillMap?.get(post)?.suspicious)
+            .map((post) => {
             const alreadySaved = savedRefs.some((r) => r.permalink === post.permalink);
             return (
               <RedditPostCard
                 key={post.redditId}
                 post={post}
+                shill={shillMap?.get(post)}
                 action={
                   <button
                     onClick={() => !alreadySaved && save(post)}

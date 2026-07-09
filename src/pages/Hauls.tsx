@@ -117,7 +117,7 @@ function HaulList({ hauls, muted = false }: { hauls: import("@/types").Haul[]; m
             key={h.id}
             to={`/hauls/${h.id}`}
             className={cn(
-              "block rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40",
+              "block card-lux rounded-2xl border border-border p-4 transition-colors hover:border-primary/40",
               muted && "opacity-70"
             )}
           >
@@ -129,7 +129,7 @@ function HaulList({ hauls, muted = false }: { hauls: import("@/types").Haul[]; m
                 </p>
               </div>
               <div className="shrink-0 text-right">
-                <p className="font-display font-semibold">{formatCNY(h.totalCNY)}</p>
+                <p className="font-num font-semibold">{formatCNY(h.totalCNY)}</p>
                 <p className="text-xs text-muted-foreground">≈ {formatUSD(h.totalUSD)}</p>
               </div>
             </div>

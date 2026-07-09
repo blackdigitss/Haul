@@ -22,6 +22,9 @@ import {
   useDeleteRedditRef,
 } from "@/hooks/use-data";
 import { vetSeller, searchReddit, type RedditPost } from "@/lib/services";
+import { trustScore, TRUST_BAND_CONFIG } from "@/lib/trust";
+import { analyzeShills } from "@/lib/shill";
+import { TrustRing } from "@/components/sellers/TrustRing";
 import { VET_CONFIG, type SellerRatings, type VetStatus } from "@/types";
 import { VetBadge } from "@/components/shared/badges";
 import { StarRating } from "@/components/shared/StarRating";
@@ -60,6 +63,15 @@ export default function SellerDetail() {
   const [notes, setNotes] = useState<string | null>(null);
 
   const sellerItems = useMemo(() => items.filter((i) => i.sellerId === id), [items, id]);
+  const trust = useMemo(
+    () => (seller ? trustScore(seller, sellerItems, refs.length) : null),
+    [seller, sellerItems, refs.length]
+  );
+  const shillMap = useMemo(
+    () =>
+      mentions && seller ? analyzeShills(mentions, [seller.name, seller.subdomain]) : null,
+    [mentions, seller]
+  );
 
   if (isLoading) return <div className="img-loading h-96 rounded-2xl" />;
   if (!seller) {
@@ -126,18 +138,22 @@ export default function SellerDetail() {
       </button>
 
       <header className="flex items-start gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-secondary to-muted font-display text-2xl font-semibold text-muted-foreground">
-          {seller.name.charAt(0).toUpperCase()}
-        </div>
+        {trust && <TrustRing trust={trust} size={68} />}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-2xl font-semibold">{seller.name}</h1>
+            <h1 className="font-display text-3xl font-bold">{seller.name}</h1>
             <VetBadge status={seller.vetStatus} />
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 font-num text-xs text-muted-foreground">
+            {trust ? `${TRUST_BAND_CONFIG[trust.band].label} · ` : ""}
             {sellerItems.length} items archived
             {seller.vettedAt ? ` · vetted ${timeAgo(seller.vettedAt)}` : ""}
           </p>
+          {trust && trust.signals.length > 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {trust.signals.join(" · ")}
+            </p>
+          )}
           <div className="mt-2.5 flex flex-wrap gap-2">
             {seller.yupooUrl && (
               <a
@@ -242,6 +258,7 @@ export default function SellerDetail() {
                   <RedditPostCard
                     key={post.redditId}
                     post={post}
+                    shill={shillMap?.get(post)}
                     action={
                       <button
                         onClick={async () => {

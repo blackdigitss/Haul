@@ -293,6 +293,13 @@ ${posts.length > 0 ? JSON.stringify(posts, null, 1) : "(no results found)"}
 
 Weigh: recency, upvotes, whether posts are QC posts (good sign people actually buy), scam/warning threads, W2C replies naming this seller, and volume of mentions. A seller with zero mentions is simply unvetted, not suspicious. Be skeptical of generic name collisions — only count posts plausibly about THIS seller.
 
+CRITICAL — shill detection. Rep sellers routinely astroturf Reddit with sockpuppets. Actively discount and call out:
+- authors whose handle resembles the seller name or subdomain (self-promotion)
+- the same author appearing repeatedly across these results pushing the seller
+- zero-engagement posts (no upvotes, no comments) that read like ads ("best seller", "trust me", contact info in the post)
+- suspiciously uniform praise with no photos/QC substance
+Legit signal looks like: high-engagement QC posts with photo albums, warnings, mixed experiences, replies from established users. If most of the "positive" evidence looks astroturfed, say so explicitly in the summary and lean toward "unvetted" or "caution" — never let shill volume masquerade as community trust.
+
 ${VOICE}
 
 Respond with ONLY a JSON object:
