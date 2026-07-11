@@ -6,7 +6,11 @@ import { DEFAULT_SETTINGS } from "@/types";
 
 const DEMO_KEY = "haul-demo";
 
+/** single-file preview builds run permanently in demo mode */
+export const IS_ARTIFACT = import.meta.env.VITE_ARTIFACT === "1";
+
 export function isDemo(): boolean {
+  if (IS_ARTIFACT) return true;
   try {
     if (new URLSearchParams(window.location.search).get("demo") === "1") {
       sessionStorage.setItem(DEMO_KEY, "1");

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { DEMO_USER, isDemo } from "@/lib/demo";
+import { DEMO_USER, IS_ARTIFACT, isDemo } from "@/lib/demo";
 
 interface AuthContextValue {
   user: User | null;
@@ -61,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
+    if (IS_ARTIFACT) return; // the preview build has no real session to leave
     if (isDemo()) {
       sessionStorage.removeItem("haul-demo");
       window.location.href = "/login";

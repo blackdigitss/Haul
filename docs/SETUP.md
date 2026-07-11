@@ -1,3 +1,20 @@
+# Setup
+
+## Hosting on Cloudflare Pages (the real app, ~3 minutes)
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages → Create → Pages →
+   Connect to Git** → pick `blackdigitss/Haul`, branch `claude/haul-app-mvp-4hxgwz`
+   (or `main` after merging).
+2. Build settings: framework preset **Vite** — build command `npm run build`,
+   output directory `dist`. (Cloudflare auto-detects `bun.lock` and uses Bun; the
+   `public/_redirects` file in this repo already handles SPA routing.)
+3. Deploy. Your app is live at `https://<project>.pages.dev` — installable as a PWA
+   from the phone browser's "Add to Home Screen".
+
+Sign-in note: **email/password works immediately** on any domain. Google sign-in goes
+through the Lovable Cloud OAuth shim, which may require the new domain to be allowlisted —
+if Google errors on the Pages domain, use email/password (same account data either way).
+
 # Setting up the backend
 
 The app is wired to the existing **haul-manager Supabase project**

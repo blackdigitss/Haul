@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, HashRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { IS_ARTIFACT } from "@/lib/demo";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -34,11 +35,13 @@ function Protected() {
 }
 
 export default function App() {
+  // hash routing for the single-file preview build (no server-side routes)
+  const Router = IS_ARTIFACT ? HashRouter : BrowserRouter;
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <BrowserRouter>
+          <Router>
             <Suspense fallback={null}>
               <Routes>
                 <Route path="/login" element={<Login />} />
@@ -59,7 +62,7 @@ export default function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
+          </Router>
           <Toaster position="top-center" richColors />
         </AuthProvider>
       </QueryClientProvider>
